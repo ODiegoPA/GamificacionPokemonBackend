@@ -40,18 +40,19 @@ db.pokemonEntrenador.hasMany(db.movimientoPokemon, {
     as: 'movimientos'
 });
 
-db.objeto.belongsToMany(db.pokemonEntrenador, {
-  through: db.EntrenadorObjeto,
-  as: 'pokemonEntrenadores',
-  foreignKey: 'objetoId',
-  otherKey: 'pokemonEntrenadorId',
+db.objeto.belongsToMany(db.entrenador, {
+    through: db.EntrenadorObjeto,
+    as: 'entrenadores',
+    foreignKey: 'objetoId',
+    otherKey: 'entrenadorId',
 });
 
-db.pokemonEntrenador.belongsToMany(db.objeto, {
-  through: db.EntrenadorObjeto,
-  as: 'objetos',
-  foreignKey: 'pokemonEntrenadorId',
-  otherKey: 'objetoId',
+db.entrenador.belongsToMany(db.objeto, {
+    through: db.EntrenadorObjeto,
+    as: 'objetos',
+    foreignKey: 'entrenadorId',
+    otherKey: 'objetoId',
 });
+
 
 module.exports = db;

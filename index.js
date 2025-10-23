@@ -44,7 +44,7 @@ app.use(function (error, req, res, next) {
     }
 });
 
-//require('./routes')(app);
+require('./routes')(app);
 
 app.listen(3000, function () {
     console.log('Ingrese a http://localhost:3000')

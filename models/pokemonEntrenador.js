@@ -9,7 +9,7 @@ module.exports = (sequelize, Sequelize) => {
         vidaActual:{
             type: Sequelize.INTEGER,
         },
-        Ataque:{
+        ataque:{
             type: Sequelize.INTEGER,
         },
     });
