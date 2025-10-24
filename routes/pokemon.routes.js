@@ -1,7 +1,8 @@
 module.exports = app => {
     let router = require("express").Router();
     const controller = require("../controllers/pokemon.controller");
-
+    const { requireAuth } = require('../middleware/auth');
+    router.use(requireAuth);
     router.get("/generar-salvaje", controller.generarPokemonSalvaje);
     router.get("/info-pokemon/:id", controller.getPokemonById);
     router.get("/iniciales", controller.getInfoIniciales);

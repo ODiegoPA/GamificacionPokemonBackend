@@ -54,5 +54,15 @@ db.entrenador.belongsToMany(db.objeto, {
     otherKey: 'objetoId',
 });
 
+db.EntrenadorObjeto.belongsTo(db.objeto, {
+    foreignKey: 'objetoId',
+    as: 'objeto'
+});
+
+db.EntrenadorObjeto.belongsTo(db.entrenador, {
+    foreignKey: 'entrenadorId',
+    as: 'entrenador'
+});
+
 
 module.exports = db;
