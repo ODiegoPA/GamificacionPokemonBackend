@@ -1,6 +1,7 @@
-// controllers/entrenador.controller.js
 const bcrypt = require('bcryptjs');
 const db = require('../models');
+const axios = require('axios');
+const POKE_BASE = 'https://pokeapi.co/api/v2';
 
 const { sequelize } = db;
 const SALT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
@@ -8,7 +9,12 @@ const SALT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
 exports.crearEntrenador = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { nombre, correo, password, sexo, apodo, vidaMax, ataque } = req.body;
+    const { nombre, correo, password, sexo, apodo, idPokedex } = req.body;
+    const pokemonRes = await axios.get(`${POKE_BASE}/pokemon/${idPokedex}`, { timeout: 8000 });
+    const pokemon = pokemonRes.data;
+    const hpOriginal = pokemon.stats.find((s) => s.stat?.name === 'hp')?.base_stat ?? 0;
+    const attack = pokemon.stats.find((s) => s.stat?.name === 'attack')?.base_stat ?? 0;
+    const hp = hpOriginal*5;
 
     let { movimientos } = req.body;
     if (movimientos && !Array.isArray(movimientos) && typeof movimientos === 'object') {
@@ -29,11 +35,11 @@ exports.crearEntrenador = async (req, res) => {
     const pokemonInicial = await db.pokemonEntrenador.create({
       entrenadorId: nuevoEntrenador.id,
       apodo,
-      vidaMax:vidaMax,
-      vidaActual:vidaMax,
-      ataque: ataque
+      vidaMax:hp,
+      vidaActual:hp,
+      ataque:attack,
+      idPokedex,
     }, { transaction: t });
-
     if (movIds.length) {
       const rows = movIds.map(movId => ({
         pokemonEntrenadorId: pokemonInicial.id,

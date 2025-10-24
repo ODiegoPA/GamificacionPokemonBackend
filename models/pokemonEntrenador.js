@@ -12,6 +12,9 @@ module.exports = (sequelize, Sequelize) => {
         ataque:{
             type: Sequelize.INTEGER,
         },
+        idPokedex:{
+            type: Sequelize.INTEGER,
+        }
     });
 
     return PokemonEntrenador;
