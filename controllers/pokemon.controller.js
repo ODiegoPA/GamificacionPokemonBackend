@@ -419,3 +419,25 @@ exports.terminarCombate = async (req, res) => {
     return res.status(500).json({ msg: 'Error al terminar el combate' });
   }
 };
+exports.curarPokemonDeEntrenador = async (req, res) => {
+  try {
+    const { entrenadorId } = req.params;
+
+    const pokemonList = await db.pokemonEntrenador.findAll({
+      where: { entrenadorId },
+    });
+    if (!pokemonList.length) {
+      return res.status(200).json({ message: 'El entrenador no tiene Pokémon para curar.' });
+    }
+    await Promise.all(
+      pokemonList.map((pokemon) => {
+        pokemon.vidaActual = pokemon.vidaMax;
+        return pokemon.save();
+      })
+    );
+    return res.status(200).json({ message: 'Todos los Pokémon han sido curados.' });
+  } catch (error) {
+    console.error('Error al curar Pokémon del entrenador:', error);
+    return res.status(500).json({ message: 'Error al curar Pokémon del entrenador' });
+  }
+};

@@ -3,7 +3,7 @@ module.exports = app => {
     let router = require("express").Router();
     const controller = require("../controllers/entrenador.controller");
 
-    router.use(requireAuth);
+    //router.use(requireAuth);
     router.post("/", controller.crearEntrenador);
 
     app.use('/entrenador', router);
