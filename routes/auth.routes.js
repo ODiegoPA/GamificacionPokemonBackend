@@ -6,6 +6,5 @@ module.exports = app => {
     router.post('/refresh', controller.refresh);
 
     router.get('/me', controller.me);
-    //router.get('/admin/only', controller.adminOnly);
     app.use('/auth', router);
 }

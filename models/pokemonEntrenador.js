@@ -14,6 +14,15 @@ module.exports = (sequelize, Sequelize) => {
         },
         idPokedex:{
             type: Sequelize.INTEGER,
+        },
+        combatesJugados:{
+            type: Sequelize.INTEGER,
+        },
+        combatesGanados:{
+            type: Sequelize.INTEGER,
+        },
+        limite:{
+            type: Sequelize.INTEGER,
         }
     });
 

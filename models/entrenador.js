@@ -14,7 +14,19 @@ module.exports = (sequelize, Sequelize) => {
         },
         pokedolares: {
             type: Sequelize.INTEGER,
-        }
+        },
+        nivel: {
+            type: Sequelize.INTEGER,
+        },
+        experiencia: {
+            type: Sequelize.INTEGER,
+        },
+        combatesJugados: {
+            type: Sequelize.INTEGER,
+        },
+        combatesGanados: {
+            type: Sequelize.INTEGER,
+        },
     });
 
     return Entrenador;
