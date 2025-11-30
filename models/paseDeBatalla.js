@@ -6,6 +6,9 @@ module.exports = (sequelize, Sequelize) => {
         descripcion: {
             type: Sequelize.STRING,
         },
+        estaActivo: {
+            type: Sequelize.BOOLEAN,
+        }
     })
     return PaseDeBatalla;
 };
