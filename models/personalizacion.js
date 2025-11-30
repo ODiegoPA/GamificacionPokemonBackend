@@ -6,6 +6,9 @@ module.exports = (sequelize, Sequelize) => {
         descripcion: {
             type: Sequelize.STRING,
         },
+        idFoto: {
+            type: Sequelize.INTEGER,
+        }
     });
 
     return Personalizacion;
