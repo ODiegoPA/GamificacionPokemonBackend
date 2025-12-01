@@ -14,7 +14,7 @@ module.exports = (app) => {
   );
   router.get("/ranking", controller.getGlobalPokemonRanking);
   router.get("/most-used", controller.getMostUsedPokemon);
-  router.post("/atrapar", controller.atraparPokemon);
+  router.post('/subir-estadistica/:id', controller.subirEstadisticaPokemon);
   router.post("/terminar-combate", controller.terminarCombate);
   router.delete("/liberar/:id", controller.liberarPokemon);
   router.post(

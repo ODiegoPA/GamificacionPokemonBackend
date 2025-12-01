@@ -403,31 +403,180 @@ exports.getAllMovesByPokedexId = async (req, res) => {
 
 exports.terminarCombate = async (req, res) => {
   try {
-    const { id, vidaActual, entrenadorId } = req.body;
+    // Support both single-combat and multi-combat payloads.
+    // Accept: id and vidaActual as scalars (original behaviour)
+    // Or: ids: [id1,id2,...], vidas: [v1,v2,...]
+    let { id, vidaActual, entrenadorId, ids, vidas } = req.body;
 
-    const [pokemon, entrenador] = await Promise.all([
-      db.pokemonEntrenador.findByPk(id),
-      db.entrenador.findByPk(entrenadorId),
-    ]);
+    if (!entrenadorId)
+      return res.status(400).json({ msg: "entrenadorId requerido" });
 
-    if (!entrenador)
-      return res.status(404).json({ msg: "Entrenador no encontrado" });
-    if (!pokemon) return res.status(404).json({ msg: "Pokémon no encontrado" });
-
-    if (vidaActual <= 0) {
-      entrenador.pokedolares = Math.max(0, entrenador.pokedolares - 200);
-      pokemon.vidaActual = 1;
+    // Normalize to arrays
+    if (Array.isArray(ids)) {
+      // use provided arrays
+    } else if (Array.isArray(id)) {
+      ids = id;
+    } else if (id !== undefined) {
+      ids = [id];
     } else {
-      entrenador.pokedolares += 500;
-      pokemon.vidaActual = vidaActual;
+      ids = [];
     }
 
-    await Promise.all([entrenador.save(), pokemon.save()]);
+    if (Array.isArray(vidas)) {
+      // use provided vidas
+    } else if (Array.isArray(vidaActual)) {
+      vidas = vidaActual;
+    } else if (vidaActual !== undefined) {
+      vidas = [vidaActual];
+    } else {
+      vidas = [];
+    }
 
+    // Trim to max 4 entries
+    ids = ids.slice(0, 4);
+    vidas = vidas.slice(0, 4);
+
+    if (!ids.length)
+      return res.status(400).json({ msg: "No se recibieron ids de Pokémon" });
+
+    // Load entrenador and all pokemon involved
+    const entrenador = await db.entrenador.findByPk(entrenadorId);
+    if (!entrenador)
+      return res.status(404).json({ msg: "Entrenador no encontrado" });
+
+    const pokemons = await db.pokemonEntrenador.findAll({ where: { id: ids } });
+    if (!pokemons.length)
+      return res.status(404).json({ msg: "Pokémon no encontrados" });
+
+    // Apply vidas updates and determine outcome: if any vida > 0 => win
+    let anyAlive = false;
+    for (let i = 0; i < pokemons.length; i++) {
+      const p = pokemons[i];
+      const v = Number(vidas[i]);
+      if (Number.isFinite(v)) {
+        // Keep 0 as dead; do not coerce to 1. Also cap to vidaMax if present.
+        const cap = Number.isFinite(Number(p.vidaMax)) ? Number(p.vidaMax) : v;
+        p.vidaActual = Math.max(0, Math.min(v, cap));
+      }
+      if ((p.vidaActual || 0) > 0) anyAlive = true;
+    }
+
+    const win = anyAlive;
+
+    // Update entrenador pokedolares similar to previous logic
+    if (win) {
+      entrenador.pokedolares = (entrenador.pokedolares || 0) + 500;
+    } else {
+      entrenador.pokedolares = Math.max(0, (entrenador.pokedolares || 0) - 200);
+    }
+
+    // Update trainer combat counters
+    entrenador.combatesJugados = (entrenador.combatesJugados || 0) + 1;
+    if (win) entrenador.combatesGanados = (entrenador.combatesGanados || 0) + 1;
+
+    // Update each pokemon's stats: combatesJugados, combatesGanados
+    for (const p of pokemons) {
+      p.combatesJugados = (p.combatesJugados || 0) + 1;
+      if (win) p.combatesGanados = (p.combatesGanados || 0) + 1;
+    }
+
+    // Experience and leveling for entrenador
+    // Trainer gains 100 XP on a win
+    if (win) {
+      entrenador.experiencia = (entrenador.experiencia || 0) + 100;
+      // Level up threshold set to 500 XP per level (cap level 50)
+      const USER_XP_THRESHOLD = 500;
+      let gainedLevels = Math.floor(entrenador.experiencia / USER_XP_THRESHOLD);
+      if (gainedLevels > 0) {
+        const newLevel = Math.min(50, (entrenador.nivel || 0) + gainedLevels);
+        // adjust gainedLevels if capped by 50
+        gainedLevels = newLevel - (entrenador.nivel || 0);
+        entrenador.nivel = newLevel;
+        entrenador.experiencia = entrenador.experiencia % USER_XP_THRESHOLD;
+        if (entrenador.nivel >= 50) entrenador.experiencia = 0;
+      }
+    }
+
+    // Pase de batalla progression: award 150 XP on win to all paseDeBatallaEntrenador records of the trainer
+    // Level up every 1000 XP, cap at level 20
+    const PASSE_XP_AWARD = 150;
+    const PASSE_XP_THRESHOLD = 1000;
+    const PASE_MAX_LEVEL = 20;
+    const paseEntries = await db.paseDeBatallaEntrenador.findAll({
+      where: { entrenadorId },
+    });
+    const paseLevelUps = [];
+    if (win && paseEntries.length) {
+      for (const paseEntry of paseEntries) {
+        paseEntry.experiencia = (paseEntry.experiencia || 0) + PASSE_XP_AWARD;
+        let gained = Math.floor(paseEntry.experiencia / PASSE_XP_THRESHOLD);
+        if (gained > 0) {
+          const oldLevel = paseEntry.nivelActual || 0;
+          let newLevel = Math.min(PASE_MAX_LEVEL, oldLevel + gained);
+          gained = newLevel - oldLevel;
+          paseEntry.nivelActual = newLevel;
+          paseEntry.experiencia = paseEntry.experiencia % PASSE_XP_THRESHOLD;
+          if (paseEntry.nivelActual >= PASE_MAX_LEVEL)
+            paseEntry.experiencia = 0;
+          if (gained > 0) {
+            // find reward info for the new level in the paseDeBatalla's niveles
+            const pase = await db.paseDeBatalla.findByPk(
+              paseEntry.paseDeBatallaId,
+              { include: [{ model: db.nivel, as: "niveles" }] }
+            );
+            let reward = null;
+            if (pase && Array.isArray(pase.niveles)) {
+              const nivel =
+                pase.niveles.find((n) => n.orden === paseEntry.nivelActual) ||
+                null;
+              if (nivel && nivel.idObjeto) {
+                const objeto = await db.objeto.findByPk(nivel.idObjeto);
+                reward = {
+                  nivel: paseEntry.nivelActual,
+                  objeto: objeto ? objeto.get({ plain: true }) : null,
+                };
+              } else if (nivel) {
+                reward = { nivel: paseEntry.nivelActual, objeto: null };
+              }
+            }
+            paseLevelUps.push({
+              paseEntry: paseEntry.get({ plain: true }),
+              reward,
+            });
+          }
+        }
+      }
+    }
+
+    // Save all changes in transaction
+    await sequelize.transaction(async (t) => {
+      await entrenador.save({ transaction: t });
+      await Promise.all(pokemons.map((p) => p.save({ transaction: t })));
+      if (paseEntries.length)
+        await Promise.all(paseEntries.map((pe) => pe.save({ transaction: t })));
+    });
+
+    // If paseLevelUps has entries, include success message and rewards in response
+    if (paseLevelUps.length) {
+      // choose first winner pokemon to include in response (first alive)
+      const winnerPokemon =
+        pokemons.find((p) => (p.vidaActual || 0) > 0) || pokemons[0];
+      return res.json({
+        msg: "Combate terminado",
+        pokedolares: entrenador.pokedolares,
+        gano: !!win,
+        resultado: win ? "victoria" : "derrota",
+        winnerPokemon: winnerPokemon.get({ plain: true }),
+        paseLevelUps,
+      });
+    }
+
+    // otherwise return basic result
     return res.status(200).json({
       msg: "Combate terminado",
       pokedolares: entrenador.pokedolares,
-      vidaActual: pokemon.vidaActual,
+      gano: !!win,
+      resultado: win ? "victoria" : "derrota",
     });
   } catch (error) {
     console.error("Error al terminar el combate:", error);
@@ -744,5 +893,48 @@ exports.getMostUsedPokemon = async (req, res) => {
     return res
       .status(500)
       .json({ error: "Error al obtener Pokémon más usados" });
+  }
+};
+
+exports.subirEstadisticaPokemon = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { stat } = req.body;
+
+    if (!id) return res.status(400).json({ error: "id de Pokémon requerido" });
+    if (!stat)
+      return res
+        .status(400)
+        .json({ error: "stat requerido (vidaMax o ataque)" });
+    if (!["vidaMax", "ataque"].includes(stat))
+      return res.status(400).json({ error: "stat inválido" });
+
+    const pokemon = await db.pokemonEntrenador.findByPk(id);
+    if (!pokemon)
+      return res.status(404).json({ error: "Pokémon no encontrado" });
+
+    const limiteActual = Number(pokemon.limite || 0);
+    if (limiteActual <= 0)
+      return res.status(400).json({ error: "Límite de mejoras alcanzado" });
+
+    if (stat === "vidaMax") {
+      pokemon.vidaMax = (pokemon.vidaMax || 0) + 3;
+    } else {
+      pokemon.ataque = (pokemon.ataque || 0) + 5;
+    }
+
+    pokemon.limite = limiteActual - 1;
+
+    await pokemon.save();
+
+    return res.json({
+      msg: "Estadística subida",
+      pokemon: pokemon.get({ plain: true }),
+    });
+  } catch (error) {
+    console.error("subirEstadisticaPokemon error:", error);
+    return res
+      .status(500)
+      .json({ error: "Error al subir estadística del Pokémon" });
   }
 };

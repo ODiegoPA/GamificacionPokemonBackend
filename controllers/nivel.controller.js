@@ -14,14 +14,15 @@ exports.listarNivelesPorPaseDeBatalla = async (req, res) => {
 };
 
 exports.crearNivel = async (req, res) => {
-    const { orden, descripcion, tipo, idObjeto, paseDeBatallaId } = req.body;
+    const { orden, descripcion, tipo, idObjeto, paseDeBatallaId, cantidad } = req.body;
     try {
         const nuevoNivel = await db.nivel.create({
             orden,
             descripcion,
             tipo,
             idObjeto,
-            paseDeBatallaId
+            paseDeBatallaId,
+            cantidad
         });
         res.status(201).json(nuevoNivel);
     } catch (error) {
@@ -32,7 +33,7 @@ exports.crearNivel = async (req, res) => {
 
 exports.actualizarNivel = async (req, res) => {
     const { nivelId } = req.params;
-    const { orden, descripcion, tipo, idObjeto } = req.body;
+    const { orden, descripcion, tipo, idObjeto, cantidad } = req.body;
     try {
         const nivel = await db.nivel.findByPk(nivelId);
         if (!nivel) {
@@ -42,6 +43,7 @@ exports.actualizarNivel = async (req, res) => {
         nivel.descripcion = descripcion;
         nivel.tipo = tipo;
         nivel.idObjeto = idObjeto;
+        nivel.cantidad = cantidad;
         await nivel.save();
         res.json(nivel);
     } catch (error) {

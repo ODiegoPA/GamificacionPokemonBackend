@@ -11,6 +11,9 @@ module.exports = (sequelize, Sequelize) => {
         },
         idObjeto: {
             type: Sequelize.INTEGER,
+        },
+        cantidad: {
+            type: Sequelize.INTEGER,
         }
     });
     return Nivel;

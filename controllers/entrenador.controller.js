@@ -41,6 +41,10 @@ exports.crearEntrenador = async (req, res) => {
         password: hashed,
         sexo,
         pokedolares: 1000,
+        nivel: 1,
+        experiencia: 0,
+        combatesJugados: 0,
+        combatesGanados: 0,
       },
       { transaction: t }
     );
@@ -53,6 +57,9 @@ exports.crearEntrenador = async (req, res) => {
         vidaActual: hp,
         ataque: attack,
         idPokedex,
+        combatesJugados: 0,
+        combatesGanados: 0,
+        limite:1000
       },
       { transaction: t }
     );
@@ -74,6 +81,32 @@ exports.crearEntrenador = async (req, res) => {
       ],
       { transaction: t }
     );
+
+    // Asignar pase de batalla inicial (id = 1) al entrenador: nivel 1, experiencia 0
+    const paseAsignado = await db.paseDeBatallaEntrenador.create(
+      {
+        entrenadorId: nuevoEntrenador.id,
+        paseDeBatallaId: 1,
+        nivelActual: 1,
+        experiencia: 0,
+      },
+      { transaction: t }
+    );
+
+    const sexoUpper = (sexo || "").toString().toUpperCase();
+    const personalizacionId =
+      sexoUpper === "M" ? 1 : sexoUpper === "F" ? 2 : null;
+    let personalizacionAsignada = null;
+    if (personalizacionId) {
+      personalizacionAsignada = await db.entrenadorPersonalizacion.create(
+        {
+          entrenadorId: nuevoEntrenador.id,
+          personalizacionId,
+          estaActivo: true,
+        },
+        { transaction: t }
+      );
+    }
 
     await t.commit();
 

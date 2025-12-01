@@ -8,6 +8,9 @@ module.exports = (sequelize, Sequelize) => {
         },
         idFoto: {
             type: Sequelize.INTEGER,
+        },
+        nombre: {
+            type: Sequelize.STRING,
         }
     });
 

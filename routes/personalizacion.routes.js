@@ -3,11 +3,10 @@ module.exports = app => {
     const controller = require("../controllers/personalizacion.controller");
     const { requireAuth } = require('../middleware/auth');
 
-    router.use(requireAuth);
     router.get("/", controller.getListadoPersonalizaciones);
-    router.get("/:id", controller.getPersonalizacionById);
+    router.get("/:personalizacionId", controller.getPersonalizacionById);
     router.post("/", controller.createPersonalizacion);
-    router.put("/:id", controller.updatePersonalizacion);
-    router.delete("/:id", controller.deletePersonalizacion);
+    router.put("/:personalizacionId", controller.updatePersonalizacion);
+    router.delete("/:personalizacionId", controller.deletePersonalizacion);
     app.use('/personalizacion', router);
 }

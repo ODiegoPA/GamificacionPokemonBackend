@@ -26,11 +26,13 @@ exports.getPersonalizacionById = async (req, res) => {
 };
 
 exports.createPersonalizacion = async (req, res) => {
-    const { tipo, descripcion } = req.body;
+    const { tipo, descripcion, idFoto, nombre } = req.body;
     try {
         const nuevaPersonalizacion = await db.personalizacion.create({
             tipo,
-            descripcion
+            nombre,
+            descripcion,
+            idFoto,
         });
         res.status(201).json(nuevaPersonalizacion);
     } catch (error) {
@@ -41,7 +43,7 @@ exports.createPersonalizacion = async (req, res) => {
 
 exports.updatePersonalizacion = async (req, res) => {
     const { personalizacionId } = req.params;
-    const { tipo, descripcion } = req.body;
+    const { tipo, descripcion, idFoto, nombre } = req.body;
     try {
         const personalizacion = await db.personalizacion.findByPk(personalizacionId);
         if (!personalizacion) {
@@ -49,6 +51,8 @@ exports.updatePersonalizacion = async (req, res) => {
         }
         personalizacion.tipo = tipo;
         personalizacion.descripcion = descripcion;
+        personalizacion.idFoto = idFoto;
+        personalizacion.nombre = nombre;
         await personalizacion.save();
         res.json(personalizacion);
     } catch (error) {
